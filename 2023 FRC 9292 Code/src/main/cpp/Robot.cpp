@@ -11,6 +11,8 @@
 #include <frc/drive/DifferentialDrive.h>
 #include "rev/CANSparkMax.h"
 
+
+// Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
@@ -80,12 +82,15 @@ void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
   if (isJoystick) {
+    // Enable joystick control for drive train
     m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
   } else {
+    // If not joystick, enable controller control for drive train
     m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
   }
 
   if (controller.GetAButtonPressed()) {
+    // Toggle joystick control 
     isJoystick = !isJoystick;
   }
 }
