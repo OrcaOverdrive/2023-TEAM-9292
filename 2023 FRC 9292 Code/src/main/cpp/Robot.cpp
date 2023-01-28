@@ -14,6 +14,8 @@
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
+bool isJoystick = false;
+
 frc::XboxController controller(0);
 frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
@@ -77,8 +79,15 @@ void Robot::AutonomousPeriodic() {
 void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
-  // split arcade
-  m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  if (isJoystick) {
+    m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
+  } else {
+    m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  }
+
+  if (controller.GetAButtonPressed()) {
+    isJoystick = !isJoystick;
+  }
 }
 
 void Robot::DisabledInit() {}
