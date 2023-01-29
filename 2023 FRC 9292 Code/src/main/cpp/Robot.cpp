@@ -11,9 +11,15 @@
 #include <frc/drive/DifferentialDrive.h>
 #include "rev/CANSparkMax.h"
 
+
+// Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
+double driveSpeed = 0.8;
+double rotateSpeed = 0.5;
+bool isJoystick = false;
 
 frc::XboxController controller(0);
+frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 
@@ -26,6 +32,8 @@ void Robot::RobotInit() {
 
   m_leftDriveTrain.RestoreFactoryDefaults();
   m_rightDriveTrain.RestoreFactoryDefaults();
+
+  m_rightDriveTrain.SetInverted(true);
 }
 
 /**
@@ -36,10 +44,7 @@ void Robot::RobotInit() {
  * <p> This runs after the mode specific periodic functions, but before
  * LiveWindow and SmartDashboard integrated updating.
  */
-void Robot::RobotPeriodic() {
-  // split arcade
-  m_driveTrain.ArcadeDrive(controller.GetRawAxis(1), controller.GetRawAxis(4));
-}
+void Robot::RobotPeriodic() {}
 
 /**
  * This autonomous (along with the chooser code above) shows how to select
@@ -75,7 +80,20 @@ void Robot::AutonomousPeriodic() {
 
 void Robot::TeleopInit() {}
 
-void Robot::TeleopPeriodic() {}
+void Robot::TeleopPeriodic() {
+  if (isJoystick) {
+    // Enable joystick control for drive train
+    m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
+  } else {
+    // If not joystick, enable controller control for drive train
+    m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  }
+
+  if (controller.GetAButtonPressed()) {
+    // Toggle joystick control 
+    isJoystick = !isJoystick;
+  }
+}
 
 void Robot::DisabledInit() {}
 
