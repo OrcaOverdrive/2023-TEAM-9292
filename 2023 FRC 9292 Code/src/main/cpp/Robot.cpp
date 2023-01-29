@@ -66,7 +66,8 @@ void Robot::AutonomousInit() {
   if (m_autoSelected == kAutoNameCustom) {
     // Custom Auto goes here
   } else {
-    // Default Auto goes here
+    m_leftDriveTrain.Set(0.1);
+    m_rightDriveTrain.Set(0.1);
   }
 }
 
@@ -74,13 +75,16 @@ void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
     // Custom Auto goes here
   } else {
-    // Default Auto goes here
   }
 }
 
 void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
+  if (joystick.GetRawAxis(1) < 0){
+    rotateSpeed *= -1;
+  }
+
   if (isJoystick) {
     // Enable joystick control for drive train
     m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
