@@ -10,13 +10,13 @@
 #include <frc/XboxController.h>
 #include <frc/drive/DifferentialDrive.h>
 #include "rev/CANSparkMax.h"
-
+#include "cameraserver/CameraServer.h"
 
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
-bool isJoystick = false;
+bool isJoystick = true;
 
 frc::XboxController controller(0);
 frc::Joystick joystick(1);
@@ -28,8 +28,11 @@ frc::DifferentialDrive m_driveTrain{m_leftDriveTrain, m_rightDriveTrain};
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
   m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
+  frc::CameraServer::StartAutomaticCapture();
+  cs::CvSink cvSink = frc::CameraServer::GetVideo();
+  cs::CvSource outputStream = frc::CameraServer::PutVideo("Blur",640,480);
+  
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
-
   m_leftDriveTrain.RestoreFactoryDefaults();
   m_rightDriveTrain.RestoreFactoryDefaults();
 
@@ -90,8 +93,9 @@ void Robot::TeleopPeriodic() {
   }
 
   if (controller.GetAButtonPressed()) {
-    // Toggle joystick control 
+    // Toggle joystick control
     isJoystick = !isJoystick;
+    frc::SmartDashboard::PutString("Test","Test"); 
   }
 }
 
