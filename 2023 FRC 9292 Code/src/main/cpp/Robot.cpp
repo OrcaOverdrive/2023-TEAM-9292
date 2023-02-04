@@ -14,14 +14,25 @@
 
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
+int placeholderA = 22, placeholderB = 23, placeholderC = 24, placeholderD = 25, placeholderE = 26;
+
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
+double armSpeed = 0; // currently not in use
+
 bool isJoystick = true;
 
 frc::XboxController controller(0);
 frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
+
+// placeholders:
+rev::CANSparkMax motorA{placeholderA, rev::CANSparkMax::MotorType::kBrushed};
+rev::CANSparkMax motorB{placeholderB, rev::CANSparkMax::MotorType::kBrushless};
+rev::CANSparkMax motorC{placeholderC, rev::CANSparkMax::MotorType::kBrushless};
+rev::CANSparkMax motorD{placeholderD, rev::CANSparkMax::MotorType::kBrushless};
+rev::CANSparkMax motorE{placeholderE, rev::CANSparkMax::MotorType::kBrushless};
 
 frc::DifferentialDrive m_driveTrain{m_leftDriveTrain, m_rightDriveTrain};
 
@@ -84,7 +95,7 @@ void Robot::AutonomousPeriodic() {
 void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
-  if (joystick.GetRawAxis(1) < 0){
+  if (joystick.GetRawAxis(1) < 0) {
     rotateSpeed *= -1;
   }
 
@@ -101,6 +112,14 @@ void Robot::TeleopPeriodic() {
     isJoystick = !isJoystick;
     frc::SmartDashboard::PutString("Test","Test"); 
   }
+
+  // Motor B and C control up and down of arm (will be finalized later)
+  motorB.Set(controller.GetLeftBumper()*armSpeed);
+  motorC.Set(controller.GetRightBumper()*armSpeed);
+
+  // Motor A controls claw
+  motorA.Set(controller.GetRawAxis(4));
+
 }
 
 void Robot::DisabledInit() {}
