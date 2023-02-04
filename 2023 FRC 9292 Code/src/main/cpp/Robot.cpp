@@ -9,12 +9,14 @@
 #include <frc/joystick.h>
 #include <frc/XboxController.h>
 #include <frc/drive/DifferentialDrive.h>
+#include <frc/motorcontrol/Victor.h>
 #include "rev/CANSparkMax.h"
 #include "cameraserver/CameraServer.h"
 
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
 int placeholderA = 22, placeholderB = 23, placeholderC = 24, placeholderD = 25, placeholderE = 26;
+int motorFChannel = 1;
 
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
@@ -33,6 +35,8 @@ rev::CANSparkMax motorB{placeholderB, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorC{placeholderC, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorD{placeholderD, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorE{placeholderE, rev::CANSparkMax::MotorType::kBrushless};
+
+frc::Victor motorF(1);
 
 frc::DifferentialDrive m_driveTrain{m_leftDriveTrain, m_rightDriveTrain};
 
@@ -114,11 +118,11 @@ void Robot::TeleopPeriodic() {
   }
 
   // Motor B and C control up and down of arm (will be finalized later)
-  motorB.Set(controller.GetLeftBumper()*armSpeed);
-  motorC.Set(controller.GetRightBumper()*armSpeed);
+  motorB.Set(controller.GetRawAxis(3)*armSpeed);
+  motorB.Set(controller.GetRawAxis(3)*armSpeed);
 
   // Motor A controls claw
-  motorA.Set(controller.GetRawAxis(4));
+  motorA.Set(controller.GetRawAxis(2));
 
 }
 
