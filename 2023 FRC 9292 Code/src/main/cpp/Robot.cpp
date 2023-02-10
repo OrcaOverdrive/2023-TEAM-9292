@@ -114,7 +114,7 @@ void Robot::TeleopPeriodic() {
   if (controller.GetAButtonPressed()) {
     // Toggle joystick control
     isJoystick = !isJoystick;
-    frc::SmartDashboard::PutString("Test","Test"); 
+    // frc::SmartDashboard::PutString("Test","Test"); 
   }
 
   // Motor B and C control up and down of arm (will be finalized later)
@@ -132,7 +132,15 @@ void Robot::DisabledPeriodic() {}
 
 void Robot::TestInit() {}
 
-void Robot::TestPeriodic() {}
+void Robot::TestPeriodic() {
+  // Test code for putting variables onto SmartDashboard
+  
+  // "Control Mode" displays current controller (true --> joystick, false --> Logitech controller)
+  frc::SmartDashboard::PutBoolean("Control Mode", isJoystick);
+
+  // "Drive Speed" displays current speed between 0-1, corresponding to 0%-100% power
+  frc::SmartDashboard::PutNumber("Drive Speed", driveSpeed);
+}
 
 void Robot::SimulationInit() {}
 
