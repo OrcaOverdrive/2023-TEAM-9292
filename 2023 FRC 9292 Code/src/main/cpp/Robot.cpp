@@ -10,6 +10,7 @@
 #include <frc/XboxController.h>
 #include <frc/drive/DifferentialDrive.h>
 #include <frc/motorcontrol/Victor.h>
+#include <frc/BuiltInAccelerometer.h>
 #include "rev/CANSparkMax.h"
 #include "cameraserver/CameraServer.h"
 
@@ -22,7 +23,9 @@ double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
 double armSpeed = 0; // currently not in use
 
-bool isJoystick = true;
+bool isJoystick = false;
+
+frc::BuiltInAccelerometer rioAccelerometer();
 
 frc::XboxController controller(0);
 frc::Joystick joystick(1);
@@ -30,11 +33,13 @@ rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType:
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 
 // placeholders:
+/*
 rev::CANSparkMax motorA{placeholderA, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax motorB{placeholderB, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorC{placeholderC, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorD{placeholderD, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorE{placeholderE, rev::CANSparkMax::MotorType::kBrushless};
+*/
 
 frc::Victor motorF(1);
 
@@ -84,8 +89,7 @@ void Robot::AutonomousInit() {
   if (m_autoSelected == kAutoNameCustom) {
     // Custom Auto goes here
   } else {
-    m_leftDriveTrain.Set(0.1);
-    m_rightDriveTrain.Set(0.1);
+    // Defult Auto
   }
 }
 
@@ -93,6 +97,9 @@ void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
     // Custom Auto goes here
   } else {
+    // Default Auto
+    m_leftDriveTrain.Set(0.1);
+    m_rightDriveTrain.Set(0.1);
   }
 }
 
@@ -111,18 +118,18 @@ void Robot::TeleopPeriodic() {
     m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
   }
 
-  if (controller.GetAButtonPressed()) {
+  // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
-    isJoystick = !isJoystick;
+    // isJoystick = !isJoystick;
     // frc::SmartDashboard::PutString("Test","Test"); 
-  }
+  // }
 
   // Motor B and C control up and down of arm (will be finalized later)
-  motorB.Set(controller.GetRawAxis(3)*armSpeed);
-  motorB.Set(controller.GetRawAxis(3)*armSpeed);
+  // motorB.Set(controller.GetRawAxis(3)*armSpeed);
+  // motorB.Set(controller.GetRawAxis(3)*armSpeed);
 
   // Motor A controls claw
-  motorA.Set(controller.GetRawAxis(2));
+  // motorA.Set(controller.GetRawAxis(2));
 
 }
 
