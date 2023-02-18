@@ -2,6 +2,9 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
+#include<list>
+#include<queue>
+
 #include "Robot.h"
 
 #include <fmt/core.h>
@@ -14,6 +17,8 @@
 #include "rev/CANSparkMax.h"
 #include "cameraserver/CameraServer.h"
 
+using namespace std;
+
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
 int placeholderA = 22, placeholderB = 23, placeholderC = 24, placeholderD = 25, placeholderE = 26;
@@ -25,10 +30,13 @@ double armSpeed = 0; // currently not in use
 
 bool isJoystick = false;
 
-frc::BuiltInAccelerometer rioAccelerometer();
+list<double> lt(5, 0.0);
+queue<double, list<double> > q(lt);
+
+frc::BuiltInAccelerometer rioAccelerometer(frc::Accelerometer::Range::kRange_2G);
 
 frc::XboxController controller(0);
-frc::Joystick joystick(1);
+// frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 
@@ -98,14 +106,15 @@ void Robot::AutonomousPeriodic() {
     // Custom Auto goes here
   } else {
     // Default Auto
-    m_leftDriveTrain.Set(0.1);
-    m_rightDriveTrain.Set(0.1);
+    m_leftDriveTrain.Set(0.2);
+    m_rightDriveTrain.Set(0.2);
   }
 }
 
 void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
+  /*
   if (joystick.GetRawAxis(1) < 0) {
     rotateSpeed *= -1;
   }
@@ -115,9 +124,25 @@ void Robot::TeleopPeriodic() {
     m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
   } else {
     // If not joystick, enable controller control for drive train
-    m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  }
+  */
+
+  m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+
+  double val_y = rioAccelerometer.GetY()*1000 + 10;
+  q.push(val_y);
+  q.pop();
+  // get average of the queue
+  double sum = 0.0;
+  for (int i = 0; i < 5; i++) {
+    double elem = q.front();
+    sum += elem;
+    q.pop(); 
+    q.push(elem);
   }
 
+  printf("y = %f\n",sum);
+  
   // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
     // isJoystick = !isJoystick;
