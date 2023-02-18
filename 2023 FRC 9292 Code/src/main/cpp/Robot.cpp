@@ -30,7 +30,9 @@ double armSpeed = 0; // currently not in use
 
 bool isJoystick = false;
 
-list<double> lt(5, 0.0);
+int avgLen = 4;
+
+list<double> lt(avgLen, 0.0);
 queue<double, list<double> > q(lt);
 
 frc::BuiltInAccelerometer rioAccelerometer(frc::Accelerometer::Range::kRange_2G);
@@ -134,14 +136,15 @@ void Robot::TeleopPeriodic() {
   q.pop();
   // get average of the queue
   double sum = 0.0;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < avgLen; i++) {
     double elem = q.front();
     sum += elem;
     q.pop(); 
     q.push(elem);
   }
+  sum = sum/q.size();
 
-  printf("y = %f\n",sum);
+  printf("y = %f, %x\n", sum, q.size());
   
   // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
