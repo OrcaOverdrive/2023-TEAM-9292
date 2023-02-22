@@ -13,7 +13,6 @@
 #include <frc/joystick.h>
 #include <frc/XboxController.h>
 #include <frc/drive/DifferentialDrive.h>
-#include <frc/motorcontrol/Victor.h>
 #include <frc/BuiltInAccelerometer.h>
 #include <frc/Timer.h>
 #include "rev/CANSparkMax.h"
@@ -27,6 +26,8 @@ int leftDriveTrainID = 20, rightDriveTrainID = 21;
 int armID = 22, clawID = 23;
 // int placeholderC = 24, placeholderD = 25, placeholderE = 26;
 
+frc::Timer t;
+
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
 double armSpeed = 0; // currently not in use
@@ -36,7 +37,7 @@ double maxAutoSpeed = 0.5; // not in use
 bool isJoystick = false;
 bool autoOnRamp = false;
 
-int avgLen = 8;
+int avgLen = 4;
 
 list<double> lt(avgLen, 0.0);
 queue<double, list<double> > q(lt);
@@ -65,10 +66,10 @@ frc::ShuffleboardTab &testingTab = frc::Shuffleboard::GetTab("Testing");
 
 int getBuiltInAccelerometer() {
   double val_y = rioAccelerometer.GetY()*1000 + 10;
-  if (val_y < 0) {
-    q.push(val_y);
-    q.pop();
-    }
+  printf("val_y: %f\n", val_y);
+  q.push(val_y);
+  q.pop();
+
   // get average of the queue
   double sum = 0.0;
   for (int i = 0; i < avgLen; i++) {
@@ -131,21 +132,18 @@ void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
     int angle = getBuiltInAccelerometer();
     printf("y, onRamp: %i, %s\n", angle, autoOnRamp ? "true" : "false");
-    if (angle <= -200) {
+    if (angle <= -300) {
       autoOnRamp = true;
     }
     if (!autoOnRamp || angle <= -20) {
-      m_leftDriveTrain.Set(0.5);
-      m_rightDriveTrain.Set(0.5);
+      m_driveTrain.TankDrive(-0.4, -0.4);
     } else if (autoOnRamp && angle >= -20) {
-      m_leftDriveTrain.Set(0);
-      m_rightDriveTrain.Set(0);
+      m_driveTrain.TankDrive(0, 0);
     }
 
   } else {
     // Default Auto
-    m_leftDriveTrain.Set(0.2);
-    m_rightDriveTrain.Set(0.2);
+    m_driveTrain.TankDrive(0.1, 0.1);
   }
 }
 
@@ -197,6 +195,8 @@ void Robot::TestPeriodic() {
 
   // "Drive Speed" displays current speed between 0-1, corresponding to 0%-100% power
   frc::SmartDashboard::PutNumber("Drive Speed", driveSpeed);
+
+  printf("y: %i", getBuiltInAccelerometer());
 }
 
 void Robot::SimulationInit() {}
