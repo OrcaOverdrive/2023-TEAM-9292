@@ -2,35 +2,41 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-#include<list>
-#include<queue>
+#include <list>
+#include <queue>
 
 #include "Robot.h"
 
 #include <fmt/core.h>
 #include <frc/smartdashboard/SmartDashboard.h>
+#include <frc/shuffleboard/Shuffleboard.h>
 #include <frc/joystick.h>
 #include <frc/XboxController.h>
 #include <frc/drive/DifferentialDrive.h>
 #include <frc/motorcontrol/Victor.h>
 #include <frc/BuiltInAccelerometer.h>
+#include <frc/Timer.h>
 #include "rev/CANSparkMax.h"
 #include "cameraserver/CameraServer.h"
+#include <networktables/NetworkTableEntry.h>
 
 using namespace std;
 
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
-int placeholderA = 22, placeholderB = 23, placeholderC = 24, placeholderD = 25, placeholderE = 26;
-int motorFChannel = 1;
+int armID = 22, clawID = 23;
+// int placeholderC = 24, placeholderD = 25, placeholderE = 26;
 
 double driveSpeed = 0.8;
 double rotateSpeed = 0.5;
 double armSpeed = 0; // currently not in use
+double clawSpeed = 0; // not in use
+double maxAutoSpeed = 0.5; // not in use
 
 bool isJoystick = false;
+bool autoOnRamp = false;
 
-int avgLen = 4;
+int avgLen = 8;
 
 list<double> lt(avgLen, 0.0);
 queue<double, list<double> > q(lt);
@@ -41,23 +47,43 @@ frc::XboxController controller(0);
 // frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
+rev::CANSparkMax m_arm{armID, rev::CANSparkMax::MotorType::kBrushed};
+rev::CANSparkMax m_claw{clawID, rev::CANSparkMax::MotorType::kBrushed};
 
 // placeholders:
 /*
-rev::CANSparkMax motorA{placeholderA, rev::CANSparkMax::MotorType::kBrushed};
-rev::CANSparkMax motorB{placeholderB, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorC{placeholderC, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorD{placeholderD, rev::CANSparkMax::MotorType::kBrushless};
 rev::CANSparkMax motorE{placeholderE, rev::CANSparkMax::MotorType::kBrushless};
 */
 
-frc::Victor motorF(1);
-
 frc::DifferentialDrive m_driveTrain{m_leftDriveTrain, m_rightDriveTrain};
 
+// Shuffleboard testing code
+frc::ShuffleboardTab &testingTab = frc::Shuffleboard::GetTab("Testing");
+// testingTab.Add("Random Axis", controller.GetRawAxis(0)); // someone please tell me how this works
+
+int getBuiltInAccelerometer() {
+  double val_y = rioAccelerometer.GetY()*1000 + 10;
+  if (val_y < 0) {
+    q.push(val_y);
+    q.pop();
+    }
+  // get average of the queue
+  double sum = 0.0;
+  for (int i = 0; i < avgLen; i++) {
+    double elem = q.front();
+    sum += elem;
+    q.pop(); 
+    q.push(elem);
+  }
+  int average = (int) (sum/q.size());
+  return average;
+}
+
 void Robot::RobotInit() {
-  m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
-  m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
+  m_chooser.SetDefaultOption("Default", kAutoNameDefault);
+  m_chooser.AddOption("Custom", kAutoNameCustom);
   frc::CameraServer::StartAutomaticCapture();
   cs::CvSink cvSink = frc::CameraServer::GetVideo();
   cs::CvSource outputStream = frc::CameraServer::PutVideo("Blur",640,480);
@@ -92,12 +118,10 @@ void Robot::RobotPeriodic() {}
  */
 void Robot::AutonomousInit() {
   m_autoSelected = m_chooser.GetSelected();
-  // m_autoSelected = SmartDashboard::GetString("Auto Selector",
-  //     kAutoNameDefault);
+  // m_autoSelected = SmartDashboard::GetString("Auto Selector", kAutoNameDefault);
   fmt::print("Auto selected: {}\n", m_autoSelected);
-
   if (m_autoSelected == kAutoNameCustom) {
-    // Custom Auto goes here
+    // Custom Auto
   } else {
     // Defult Auto
   }
@@ -105,7 +129,19 @@ void Robot::AutonomousInit() {
 
 void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
-    // Custom Auto goes here
+    int angle = getBuiltInAccelerometer();
+    printf("y, onRamp: %i, %s\n", angle, autoOnRamp ? "true" : "false");
+    if (angle <= -200) {
+      autoOnRamp = true;
+    }
+    if (!autoOnRamp || angle <= -20) {
+      m_leftDriveTrain.Set(0.5);
+      m_rightDriveTrain.Set(0.5);
+    } else if (autoOnRamp && angle >= -20) {
+      m_leftDriveTrain.Set(0);
+      m_rightDriveTrain.Set(0);
+    }
+
   } else {
     // Default Auto
     m_leftDriveTrain.Set(0.2);
@@ -131,20 +167,7 @@ void Robot::TeleopPeriodic() {
 
   m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
 
-  double val_y = rioAccelerometer.GetY()*1000 + 10;
-  q.push(val_y);
-  q.pop();
-  // get average of the queue
-  double sum = 0.0;
-  for (int i = 0; i < avgLen; i++) {
-    double elem = q.front();
-    sum += elem;
-    q.pop(); 
-    q.push(elem);
-  }
-  sum = sum/q.size();
-
-  printf("y = %f, %x\n", sum, q.size());
+  printf("y = %i\n", getBuiltInAccelerometer());
   
   // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
@@ -152,12 +175,11 @@ void Robot::TeleopPeriodic() {
     // frc::SmartDashboard::PutString("Test","Test"); 
   // }
 
-  // Motor B and C control up and down of arm (will be finalized later)
-  // motorB.Set(controller.GetRawAxis(3)*armSpeed);
-  // motorB.Set(controller.GetRawAxis(3)*armSpeed);
+  // m_arm controls up and down of arm
+  m_claw.Set(controller.GetRawAxis(3)*armSpeed);
 
-  // Motor A controls claw
-  // motorA.Set(controller.GetRawAxis(2));
+  // m_claw controls claw
+  m_arm.Set(controller.GetRawAxis(2)*clawSpeed);
 
 }
 
