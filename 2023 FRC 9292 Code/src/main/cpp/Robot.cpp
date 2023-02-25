@@ -18,6 +18,8 @@
 #include "rev/CANSparkMax.h"
 #include "cameraserver/CameraServer.h"
 #include <networktables/NetworkTableEntry.h>
+#include <frc/shuffleboard/SimpleWidget.h>
+#include <frc/shuffleboard/ComplexWidget.h>
 
 using namespace std;
 
@@ -28,14 +30,15 @@ int armID = 22, clawID = 23;
 
 frc::Timer t;
 
-double driveSpeed = 0.8;
+double driveSpeed = 0.5;
 double rotateSpeed = 0.5;
-double armSpeed = 0; // currently not in use
-double clawSpeed = 0; // not in use
+double armSpeed = 0.2; // currently not in use
+double clawSpeed = 1.0; // not in use
 double maxAutoSpeed = 0.5; // not in use
 
 bool isJoystick = false;
 bool autoOnRamp = false;
+bool controlsReverse = false;
 
 int avgLen = 4;
 
@@ -61,14 +64,19 @@ rev::CANSparkMax motorE{placeholderE, rev::CANSparkMax::MotorType::kBrushless};
 frc::DifferentialDrive m_driveTrain{m_leftDriveTrain, m_rightDriveTrain};
 
 // Shuffleboard testing code
-frc::ShuffleboardTab &testingTab = frc::Shuffleboard::GetTab("Testing");
-// testingTab.Add("Random Axis", controller.GetRawAxis(0)); // someone please tell me how this works
+frc::ShuffleboardTab& testingTab = frc::Shuffleboard::GetTab("Testing");
+// testingTab.Add("Random Axis", controller.GetRawAxis(0));
+
+frc::SimpleWidget& testingWidget = testingTab.Add("Random Axis", controller.GetRawAxis(0));
 
 int getBuiltInAccelerometer() {
-  double val_y = rioAccelerometer.GetY()*1000 + 10;
-  printf("val_y: %f\n", val_y);
-  q.push(val_y);
-  q.pop();
+  double val_x = rioAccelerometer.GetX()*1000 + 20;
+  printf("val_x: %i\n", (int) (val_x));
+  printf("prev = %d, cur = %d\n", q.back(), val_x);
+  if (abs(val_x-q.back()) <= 50) {
+    q.push(val_x);
+    q.pop();
+  }
 
   // get average of the queue
   double sum = 0.0;
@@ -78,7 +86,7 @@ int getBuiltInAccelerometer() {
     q.pop(); 
     q.push(elem);
   }
-  int average = (int) (sum/q.size());
+  int average = (int) (sum/avgLen);
   return average;
 }
 
@@ -131,13 +139,13 @@ void Robot::AutonomousInit() {
 void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
     int angle = getBuiltInAccelerometer();
-    printf("y, onRamp: %i, %s\n", angle, autoOnRamp ? "true" : "false");
-    if (angle <= -300) {
+    printf("x, onRamp: %i, %s\n", angle, autoOnRamp ? "true" : "false");
+    if (angle < -300) {
       autoOnRamp = true;
     }
-    if (!autoOnRamp || angle <= -20) {
-      m_driveTrain.TankDrive(-0.4, -0.4);
-    } else if (autoOnRamp && angle >= -20) {
+    if (!autoOnRamp || angle <= -50) {
+      m_driveTrain.TankDrive(-0.5, -0.5);
+    } else if (autoOnRamp && angle > -50) {
       m_driveTrain.TankDrive(0, 0);
     }
 
@@ -162,10 +170,22 @@ void Robot::TeleopPeriodic() {
     // If not joystick, enable controller control for drive train
   }
   */
+  double forwardSpeed = controller.GetRawAxis(1);
+  if(forwardSpeed >= 0) {
+    forwardSpeed = pow(forwardSpeed, 2);
+  } else {
+    forwardSpeed = -pow(forwardSpeed, 2);
+  }
 
-  m_driveTrain.ArcadeDrive(controller.GetRawAxis(1)*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  controlsReverse = (controller.GetAButtonPressed()) ? !controlsReverse : controlsReverse;
 
-  printf("y = %i\n", getBuiltInAccelerometer());
+  if (controlsReverse) {
+    m_driveTrain.ArcadeDrive(-forwardSpeed*driveSpeed, -controller.GetRawAxis(0)*rotateSpeed);
+  } else {
+    m_driveTrain.ArcadeDrive(forwardSpeed*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+  }
+
+  printf("x = %i\n", getBuiltInAccelerometer());
   
   // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
@@ -195,8 +215,17 @@ void Robot::TestPeriodic() {
 
   // "Drive Speed" displays current speed between 0-1, corresponding to 0%-100% power
   frc::SmartDashboard::PutNumber("Drive Speed", driveSpeed);
+  
+  // "Accelerometer Value" displays current average of most recent accelerometer readings
+  frc::SmartDashboard::PutNumber("Accelrometer Value", getBuiltInAccelerometer());
 
-  printf("y: %i", getBuiltInAccelerometer());
+  // frc::SimpleWidget& testingWidget = frc::Shuffleboard::GetTab("Testing").Add("Random Axis", (int) (controller.GetRawAxis(0)*100));
+
+  // frc::Shuffleboard::Update();
+
+  nt::GenericEntry * test = frc::Shuffleboard::GetTab("Testing").Add("Test Slider", 0).WithWidget(frc::BuiltInWidgets::kNumberSlider).GetEntry();
+  // nt::Value ntTestVal = nt::GenericEntry::ValueType;
+  // printf("Test Slider Value: %d", *test);
 }
 
 void Robot::SimulationInit() {}
