@@ -36,17 +36,18 @@ double armSpeed = 0;
 
 double fastSetPoint = 0.6;
 double perciseSetPoint = 0.2;
-double armSetPoint = 0.17;
+double armSetPoint = 0.15;
 double rotateSpeed = 0.5;
 double clawSpeed = 1.0; 
 
-double increment = 0.04;
-double armIncrement = 0.02;
+double increment = 0.08;
+double armIncrement = 0.03;
 double maxAutoSpeed = 0.5; // not in use
 
 bool isJoystick = false;
 bool autoOnRamp = false;
 bool controlsReverse = false;
+bool persisionMode = false;
 
 int avgLen = 4;
 
@@ -76,6 +77,12 @@ frc::ShuffleboardTab& testingTab = frc::Shuffleboard::GetTab("Testing");
 // testingTab.Add("Random Axis", controller.GetRawAxis(0));
 
 frc::SimpleWidget& testingWidget = testingTab.Add("Random Axis", controller.GetRawAxis(0));
+
+void toggleBool(bool *boolVar, bool buttonPressed) {
+  if (buttonPressed) {
+    *boolVar = !(*boolVar);
+  }
+}
 
 int getBuiltInAccelerometer() {
   double val_x = rioAccelerometer.GetX()*1000 + 20;
@@ -181,7 +188,7 @@ void Robot::TeleopPeriodic() {
 
   double targetForwardSpeed = controller.GetRawAxis(1)*fastSetPoint;
   double targetTurnSpeed = controller.GetRawAxis(0)*fastSetPoint;
-  double targetArmPosition = controller.GetRawAxis(3)*fastSetPoint;
+  double targetArmPosition = controller.GetRawAxis(3)*armSetPoint;
 
   // adjust drive speed
   if (targetForwardSpeed > driveSpeed) {
@@ -210,13 +217,10 @@ void Robot::TeleopPeriodic() {
     armSpeed -= armIncrement;
   }
 
-  // toggle reverse controls depending on button A
-  if (controller.GetAButtonPressed()) {
-    controlsReverse = !controlsReverse;
-  }
+  toggleBool(&controlsReverse, controller.GetAButtonPressed());
 
   if (controlsReverse) {
-    m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
+    m_driveTrain.ArcadeDrive(-driveSpeed, -turnSpeed);
   } else {
     m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
   }
