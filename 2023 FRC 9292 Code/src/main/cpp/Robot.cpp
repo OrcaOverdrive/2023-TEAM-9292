@@ -25,15 +25,23 @@ using namespace std;
 
 // Settings for drive train. Speeed, ID, rotation speed and joystick control.
 int leftDriveTrainID = 20, rightDriveTrainID = 21;
-int armID = 22, clawID = 23;
+int armID = 23, clawID = 22;
 // int placeholderC = 24, placeholderD = 25, placeholderE = 26;
 
 frc::Timer t;
 
-double driveSpeed = 0.5;
+double driveSpeed = 0;
+double turnSpeed = 0;
+double armSpeed = 0;
+
+double fastSetPoint = 0.6;
+double perciseSetPoint = 0.2;
+double armSetPoint = 0.17;
 double rotateSpeed = 0.5;
-double armSpeed = 0.2; // currently not in use
-double clawSpeed = 1.0; // not in use
+double clawSpeed = 1.0; 
+
+double increment = 0.04;
+double armIncrement = 0.02;
 double maxAutoSpeed = 0.5; // not in use
 
 bool isJoystick = false;
@@ -170,22 +178,50 @@ void Robot::TeleopPeriodic() {
     // If not joystick, enable controller control for drive train
   }
   */
-  double forwardSpeed = controller.GetRawAxis(1);
-  if(forwardSpeed >= 0) {
-    forwardSpeed = pow(forwardSpeed, 2);
-  } else {
-    forwardSpeed = -pow(forwardSpeed, 2);
+
+  double targetForwardSpeed = controller.GetRawAxis(1)*fastSetPoint;
+  double targetTurnSpeed = controller.GetRawAxis(0)*fastSetPoint;
+  double targetArmPosition = controller.GetRawAxis(3)*fastSetPoint;
+
+  // adjust drive speed
+  if (targetForwardSpeed > driveSpeed) {
+    // speed must increase to get closer towards target
+    driveSpeed += increment;
+  } else if (targetForwardSpeed < driveSpeed) {
+    // speed must decrease to get closer towards target
+    driveSpeed -= increment;
   }
 
-  controlsReverse = (controller.GetAButtonPressed()) ? !controlsReverse : controlsReverse;
+  // adjust turn speed
+  if (targetTurnSpeed > turnSpeed) {
+    // turn speed must increase to get closer towards target
+    turnSpeed += increment;
+  } else if (targetTurnSpeed < turnSpeed) {
+    // turn speed must decrease to get closer towards target
+    turnSpeed -= increment;
+  }
+
+  // adjust armSpeed
+  if (targetArmPosition > armSpeed) {
+    // turn speed must increase to get closer towards target
+    armSpeed += armIncrement;
+  } else if (targetArmPosition < armSpeed) {
+    // turn speed must decrease to get closer towards target
+    armSpeed -= armIncrement;
+  }
+
+  // toggle reverse controls depending on button A
+  if (controller.GetAButtonPressed()) {
+    controlsReverse = !controlsReverse;
+  }
 
   if (controlsReverse) {
-    m_driveTrain.ArcadeDrive(-forwardSpeed*driveSpeed, -controller.GetRawAxis(0)*rotateSpeed);
+    m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
   } else {
-    m_driveTrain.ArcadeDrive(forwardSpeed*driveSpeed, controller.GetRawAxis(0)*rotateSpeed);
+    m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
   }
 
-  printf("x = %i\n", getBuiltInAccelerometer());
+  // printf("x = %i\n", getBuiltInAccelerometer());
   
   // if (controller.GetAButtonPressed()) {
     // Toggle joystick control
@@ -194,10 +230,17 @@ void Robot::TeleopPeriodic() {
   // }
 
   // m_arm controls up and down of arm
-  m_claw.Set(controller.GetRawAxis(3)*armSpeed);
+  m_claw.Set(controller.GetRawAxis(2)*clawSpeed);
 
   // m_claw controls claw
-  m_arm.Set(controller.GetRawAxis(2)*clawSpeed);
+  m_arm.Set(armSpeed);
+
+  // put important data onto smartdashboard
+  frc::SmartDashboard::PutNumber("targetForwardSpeed", targetForwardSpeed);
+  frc::SmartDashboard::PutNumber("driveSpeed", driveSpeed);
+  frc::SmartDashboard::PutNumber("targetTurnSpeed", targetTurnSpeed);
+  frc::SmartDashboard::PutNumber("turnSpeed", driveSpeed);
+  frc::SmartDashboard::PutBoolean("controlsReverse", controlsReverse);
 
 }
 
