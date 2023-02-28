@@ -28,20 +28,18 @@ int leftDriveTrainID = 20, rightDriveTrainID = 21;
 int armID = 23, clawID = 22;
 // int placeholderC = 24, placeholderD = 25, placeholderE = 26;
 
-frc::Timer t;
-
 double driveSpeed = 0;
 double turnSpeed = 0;
 double armSpeed = 0;
 
-double fastSetPoint = 0.6;
-double perciseSetPoint = 0.2;
-double armSetPoint = 0.15;
+double fastSetPoint = 0.70;
+double perciseSetPoint = 0.55;
+double armSetPoint = 0.25;
 double rotateSpeed = 0.5;
-double clawSpeed = 1.0; 
 
-double increment = 0.08;
-double armIncrement = 0.03;
+double increment = 0.04;
+double armIncrement = 0.02;
+double iPercent = 0.2;
 double maxAutoSpeed = 0.5; // not in use
 
 bool isJoystick = false;
@@ -51,13 +49,15 @@ bool persisionMode = false;
 
 int avgLen = 4;
 
-list<double> lt(avgLen, 0.0);
-queue<double, list<double> > q(lt);
+list<int> lt(avgLen, 0);
+queue<int, list<int> > q(lt);
+
+frc::Timer *timer = new frc::Timer();
 
 frc::BuiltInAccelerometer rioAccelerometer(frc::Accelerometer::Range::kRange_2G);
 
 frc::XboxController controller(0);
-// frc::Joystick joystick(1);
+frc::Joystick joystick(1);
 rev::CANSparkMax m_leftDriveTrain{leftDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_rightDriveTrain{rightDriveTrainID, rev::CANSparkMax::MotorType::kBrushed};
 rev::CANSparkMax m_arm{armID, rev::CANSparkMax::MotorType::kBrushed};
@@ -84,19 +84,33 @@ void toggleBool(bool *boolVar, bool buttonPressed) {
   }
 }
 
-int getBuiltInAccelerometer() {
-  double val_x = rioAccelerometer.GetX()*1000 + 20;
-  printf("val_x: %i\n", (int) (val_x));
-  printf("prev = %d, cur = %d\n", q.back(), val_x);
-  if (abs(val_x-q.back()) <= 50) {
+double incrementAmount(double diff, double i) {
+  if (diff > 0) {
+    return iPercent*diff + i;
+  } else if (diff < 0) {
+    return iPercent*diff - i;
+  }
+}
+
+signed int getBuiltInAccelerometer() {
+  int val_x = (int) (rioAccelerometer.GetZ()*1000 - 15);
+  // printf("val_x: %d\n", val_x);
+  printf("prev = %i, cur = %i\n", q.back(), val_x);
+  if (val_x - q.back() >= 50) {
+    q.push(q.back()+50);
+    q.pop();
+  } else if (val_x - q.back() <= -50) {
+    q.push(q.back()-50);
+    q.pop();
+  } else {
     q.push(val_x);
     q.pop();
   }
 
   // get average of the queue
-  double sum = 0.0;
+  int sum = 0;
   for (int i = 0; i < avgLen; i++) {
-    double elem = q.front();
+    int elem = q.front();
     sum += elem;
     q.pop(); 
     q.push(elem);
@@ -148,12 +162,14 @@ void Robot::AutonomousInit() {
     // Custom Auto
   } else {
     // Defult Auto
+    timer->Start();
+    printf("starting\n");
   }
 }
 
 void Robot::AutonomousPeriodic() {
   if (m_autoSelected == kAutoNameCustom) {
-    int angle = getBuiltInAccelerometer();
+    signed int angle = getBuiltInAccelerometer();
     printf("x, onRamp: %i, %s\n", angle, autoOnRamp ? "true" : "false");
     if (angle < -300) {
       autoOnRamp = true;
@@ -166,64 +182,64 @@ void Robot::AutonomousPeriodic() {
 
   } else {
     // Default Auto
-    m_driveTrain.TankDrive(0.1, 0.1);
+    units::time::second_t curTime = timer->Get();
+    float time = curTime.value();
+    printf("hello\n");
+    printf("current time: %f\n", time);
+
+    if (time <= 3) {
+      m_driveTrain.TankDrive(0.3, 0.3);
+    } else {
+      m_driveTrain.TankDrive(0, 0);
+    }
   }
 }
 
 void Robot::TeleopInit() {}
 
 void Robot::TeleopPeriodic() {
-  /*
-  if (joystick.GetRawAxis(1) < 0) {
-    rotateSpeed *= -1;
-  }
+  // signed int ac_val = (signed int) (rioAccelerometer.GetZ()*1000-15);
+  // printf("val_x: %i\n", ac_val);
 
-  if (isJoystick) {
-    // Enable joystick control for drive train
-    m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*rotateSpeed);
-  } else {
-    // If not joystick, enable controller control for drive train
-  }
-  */
+  toggleBool(&controlsReverse, controller.GetRawButtonPressed(1));
+  toggleBool(&persisionMode, controller.GetRawButtonPressed(2));
 
-  double targetForwardSpeed = controller.GetRawAxis(1)*fastSetPoint;
-  double targetTurnSpeed = controller.GetRawAxis(0)*fastSetPoint;
+  double targetForwardSpeed = controller.GetRawAxis(1)* ((persisionMode) ? perciseSetPoint : fastSetPoint);
+  double targetTurnSpeed = controller.GetRawAxis(0)* ((persisionMode) ? perciseSetPoint : fastSetPoint);
   double targetArmPosition = controller.GetRawAxis(3)*armSetPoint;
 
   // adjust drive speed
-  if (targetForwardSpeed > driveSpeed) {
-    // speed must increase to get closer towards target
-    driveSpeed += increment;
-  } else if (targetForwardSpeed < driveSpeed) {
-    // speed must decrease to get closer towards target
-    driveSpeed -= increment;
-  }
+  // if (targetForwardSpeed > driveSpeed) {
+  //   // speed must increase to get closer towards target
+  //   driveSpeed += increment;
+  // } else if (targetForwardSpeed < driveSpeed) {
+  //   // speed must decrease to get closer towards target
+  //   driveSpeed -= increment;
+  // }
+
+  driveSpeed += incrementAmount(targetForwardSpeed - driveSpeed, increment);
 
   // adjust turn speed
-  if (targetTurnSpeed > turnSpeed) {
-    // turn speed must increase to get closer towards target
-    turnSpeed += increment;
-  } else if (targetTurnSpeed < turnSpeed) {
-    // turn speed must decrease to get closer towards target
-    turnSpeed -= increment;
-  }
+  // if (targetTurnSpeed > turnSpeed) {
+  //   // turn speed must increase to get closer towards target
+  //   turnSpeed += increment;
+  // } else if (targetTurnSpeed < turnSpeed) {
+  //   // turn speed must decrease to get closer towards target
+  //   turnSpeed -= increment;
+  // }
+
+  turnSpeed += incrementAmount(targetTurnSpeed - turnSpeed, increment);
 
   // adjust armSpeed
-  if (targetArmPosition > armSpeed) {
-    // turn speed must increase to get closer towards target
-    armSpeed += armIncrement;
-  } else if (targetArmPosition < armSpeed) {
-    // turn speed must decrease to get closer towards target
-    armSpeed -= armIncrement;
-  }
+  // if (targetArmPosition > armSpeed) {
+  //   // turn speed must increase to get closer towards target
+  //   armSpeed += armIncrement;
+  // } else if (targetArmPosition < armSpeed) {
+  //   // turn speed must decrease to get closer towards target
+  //   armSpeed -= armIncrement;
+  // }
 
-  toggleBool(&controlsReverse, controller.GetAButtonPressed());
-
-  if (controlsReverse) {
-    m_driveTrain.ArcadeDrive(-driveSpeed, -turnSpeed);
-  } else {
-    m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
-  }
+  armSpeed += incrementAmount(targetArmPosition - armSpeed, increment);
 
   // printf("x = %i\n", getBuiltInAccelerometer());
   
@@ -234,18 +250,36 @@ void Robot::TeleopPeriodic() {
   // }
 
   // m_arm controls up and down of arm
-  m_claw.Set(controller.GetRawAxis(2)*clawSpeed);
+  m_claw.Set(controller.GetRawAxis(2));
 
   // m_claw controls claw
-  m_arm.Set(armSpeed);
+  if (controlsReverse) {
+    m_arm.Set(-armSpeed);
+  } else {
+    m_arm.Set(armSpeed);
+  }
+
+  // if (isJoystick) {
+  //   // Enable joystick control for drive train
+  //   m_driveTrain.ArcadeDrive(joystick.GetRawAxis(1)*driveSpeed, joystick.GetRawAxis(0)*((joystick.GetRawAxis(1) < 0) ? -rotateSpeed : rotateSpeed));
+  // } else {
+  //   // If not joystick, enable controller control for drive train
+  // }
+
+  if (controlsReverse) {
+    m_driveTrain.ArcadeDrive(-driveSpeed, turnSpeed);
+  } else {
+    m_driveTrain.ArcadeDrive(driveSpeed, turnSpeed);
+  }
 
   // put important data onto smartdashboard
   frc::SmartDashboard::PutNumber("targetForwardSpeed", targetForwardSpeed);
   frc::SmartDashboard::PutNumber("driveSpeed", driveSpeed);
   frc::SmartDashboard::PutNumber("targetTurnSpeed", targetTurnSpeed);
-  frc::SmartDashboard::PutNumber("turnSpeed", driveSpeed);
+  frc::SmartDashboard::PutNumber("turnSpeed", turnSpeed);
+  frc::SmartDashboard::PutNumber("Accelerometer", getBuiltInAccelerometer());
   frc::SmartDashboard::PutBoolean("controlsReverse", controlsReverse);
-
+  frc::SmartDashboard::PutBoolean("persisionMode", persisionMode);
 }
 
 void Robot::DisabledInit() {}
